@@ -4,7 +4,8 @@
  * and is provided AS IS, with NO WARRANTY. */
 
 #include <X11/Xlib.h>
-
+#include <unistd.h>
+#include <stdlib.h>
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 int main(void)
@@ -13,37 +14,73 @@ int main(void)
     XWindowAttributes attr;
     XButtonEvent start;
     XEvent ev;
-
+    
     if(!(dpy = XOpenDisplay(0x0))) return 1;
-
     XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("F1")), Mod1Mask,
+	     DefaultRootWindow(dpy), True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("F2")), Mod1Mask,
             DefaultRootWindow(dpy), True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("F4")), Mod1Mask,
+            DefaultRootWindow(dpy), True, GrabModeAsync, GrabModeAsync);
+    
     XGrabButton(dpy, 1, Mod1Mask, DefaultRootWindow(dpy), True,
-            ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+		ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
     XGrabButton(dpy, 3, Mod1Mask, DefaultRootWindow(dpy), True,
-            ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+		ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
 
     start.subwindow = None;
-    for(;;)
+    if(fork() == 0) {
+      execlp("picom","picom",NULL);
+      exit(0);
+    }
+    
+    if(fork() == 0) {
+      execlp("feh","feh","--bg-scale","/home/drhouse/lain.png",NULL);
+      exit(0);
+    }
+    if(fork() == 0) {
+      execlp("setxkbmap","setxkbmap","br",NULL);
+      exit(0);
+    }
+    if(fork() == 0) {
+      execlp("setxkbmap","setxkbmap","-option \"terminate:ctrl_alt_bksp\"",NULL);
+      exit(0);
+    }
+    for(;;1)
     {
-        XNextEvent(dpy, &ev);
+        XNextEvent(dpy, &ev); 
         if(ev.type == KeyPress && ev.xkey.subwindow != None)
-            XRaiseWindow(dpy, ev.xkey.subwindow);
+	  XRaiseWindow(dpy, ev.xkey.subwindow);
+	
+	else if(ev.type == KeyPress)
+	  {
+	  if (fork() == 0) {
+	    execlp("st","st", NULL);
+	    exit(0);
+	  }
+	  }
+	else if(ev.type == KeyPress && ev.xkey.subwindow != None) {
+	  if(fork == 0) {
+	    execlp("restart","pkill","tinywm","&&","startx","~/Downloads/tinywm",NULL);
+	    
+	  }
+	}
         else if(ev.type == ButtonPress && ev.xbutton.subwindow != None)
-        {
-            XGetWindowAttributes(dpy, ev.xbutton.subwindow, &attr);
+	  {            XGetWindowAttributes(dpy, ev.xbutton.subwindow, &attr);
             start = ev.xbutton;
-        }
+	  }
         else if(ev.type == MotionNotify && start.subwindow != None)
-        {
+	  {
             int xdiff = ev.xbutton.x_root - start.x_root;
             int ydiff = ev.xbutton.y_root - start.y_root;
             XMoveResizeWindow(dpy, start.subwindow,
-                attr.x + (start.button==1 ? xdiff : 0),
-                attr.y + (start.button==1 ? ydiff : 0),
-                MAX(1, attr.width + (start.button==3 ? xdiff : 0)),
-                MAX(1, attr.height + (start.button==3 ? ydiff : 0)));
-        }
+			      attr.x + (start.button==1 ? xdiff : 0),
+			      attr.y + (start.button==1 ? ydiff : 0),
+			      MAX(1, attr.width + (start.button==3 ? xdiff : 0)),
+			      MAX(1, attr.height + (start.button==3 ? ydiff : 0)));
+	    
+	  }
+	
         else if(ev.type == ButtonRelease)
             start.subwindow = None;
     }
